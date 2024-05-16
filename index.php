@@ -5,8 +5,6 @@ require_once 'classes/Contacts.php';
 $db = new Database();
 $conn = $db->connect();
 $contacts = new Contacts($conn);
-$groupFilter = isset($_GET['group']) ? $_GET['group'] : null;
-$filteredContacts = $groupFilter ? $contacts->getContactsByGroup($groupFilter) : $contacts->getContacts();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
  if (isset($_POST['add'])) {
@@ -15,6 +13,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
   header("Location: edit_contact.php");
  } elseif (isset($_POST['delete'])) {
   $contacts->deleteContact($_POST['id']);
+ } elseif (isset($_POST['filter_group'])) {
+  $selected_group = $_POST['group'];
+  if ($selected_group === 'all') {
+   $filtered_contacts = $contacts->getContacts();
+  } else {
+   $filtered_contacts = $contacts->getContactsByGroup($selected_group);
+  }
  }
 }
 ?>
@@ -31,22 +36,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 <body>
  <h2>Contact List</h2>
-
-
  <form method="POST">
   <button type="submit" name="add">Add Contact</button>
  </form>
 
- <form method="GET">
+ <form method="POST">
   <label for="group">Filter by Group:</label>
   <select name="group" id="group">
-   <option value="">All</option>
-   <?php foreach ($contacts->getAllGroups() as $group) : ?>
-    <option value="<?php echo $group['group_name']; ?>" <?php echo $groupFilter === $group['group_name'] ? 'selected' : ''; ?>><?php echo $group['group_name']; ?></option>
-   <?php endforeach; ?>
+   <option value="all">All</option>
+   <?php
+   $groups = $contacts->getUniqueGroups();
+   foreach ($groups as $group) {
+    if($group['group_name'] == ""){
+     echo "<option value='" . $group['group_name'] . "'>" . "Ungrouped" . "</option>";
+    }else{
+     echo "<option value='" . $group['group_name'] . "'>" . $group['group_name'] . "</option>";
+    }
+    
+   }
+   ?>
   </select>
-  <button type="submit">Filter</button>
+  <button type="submit" name="filter_group">Filter</button>
  </form>
+
  <table>
   <tr>
    <th>Name</th>
@@ -56,25 +68,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
    <th>Group</th>
    <th>Action</th>
   </tr>
-  <?php foreach ($filteredContacts as $contact) : ?>
-   <tr>
-    <td><?php echo $contact['name']; ?></td>
-    <td><?php echo $contact['phone']; ?></td>
-    <td><?php echo $contact['nickname']; ?></td>
-    <td><?php echo $contact['email']; ?></td>
-    <td><?php echo $contact['group_name']; ?></td>
-    <td>
-     <form method="POST" action="edit_contact.php" style="display: inline;">
-      <input type="hidden" name="id" value="<?php echo $contact['id']; ?>">
-      <button type="submit" name="editt">Edit</button>
-     </form>
-     <form method="POST" style="display: inline;">
-      <input type="hidden" name="id" value="<?php echo $contact['id']; ?>">
-      <button type="submit" name="delete">Delete</button>
-     </form>
-    </td>
-   </tr>
-  <?php endforeach; ?>
+  <?php
+  if (isset($filtered_contacts)) {
+   foreach ($filtered_contacts as $contact) {
+    echo "<tr>";
+    echo "<td>" . $contact['name'] . "</td>";
+    echo "<td>" . $contact['phone'] . "</td>";
+    echo "<td>" . $contact['nickname'] . "</td>";
+    echo "<td>" . $contact['email'] . "</td>";
+    echo "<td>" . $contact['group_name'] . "</td>";
+    echo "<td>
+                        <form method='POST' action='edit_contact.php' style='display: inline;'>
+                            <input type='hidden' name='id' value='" . $contact['id'] . "'>
+                            <button type='submit' name='editt'>Edit</button>
+                        </form>
+                        <form method='POST' style='display: inline;'>
+                            <input type='hidden' name='id' value='" . $contact['id'] . "'>
+                            <button type='submit' name='delete'>Delete</button>
+                        </form>
+                    </td>";
+    echo "</tr>";
+   }
+  } else {
+   foreach ($contacts->getContacts() as $contact) {
+    echo "<tr>";
+    echo "<td>" . $contact['name'] . "</td>";
+    echo "<td>" . $contact['phone'] . "</td>";
+    echo "<td>" . $contact['nickname'] . "</td>";
+    echo "<td>" . $contact['email'] . "</td>";
+    echo "<td>" . $contact['group_name'] . "</td>";
+    echo "<td>
+                        <form method='POST' action='edit_contact.php' style='display: inline;'>
+                            <input type='hidden' name='id' value='" . $contact['id'] . "'>
+                            <button type='submit' name='editt'>Edit</button>
+                        </form>
+                        <form method='POST' style='display: inline;'>
+                            <input type='hidden' name='id' value='" . $contact['id'] . "'>
+                            <button type='submit' name='delete'>Delete</button>
+                        </form>
+                    </td>";
+    echo "</tr>";
+   }
+  }
+  ?>
  </table>
 </body>
 
